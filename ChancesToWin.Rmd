@@ -1,0 +1,47 @@
+---
+title: "Who will win the championship?"
+output: html_notebook
+---
+
+[Sports Club Stats](http://www.sportsclubstats.com) is a great website for who likes sports and enjoys looking at the related statistics. It collects data for several leagues and it runs simulations to estimate who will be the winner at the end of the season.
+
+The charts in the website are backed by data obtained via a json API. Before jumping into the visualisation it's time to write a function to download the data and perform some minimal cleaning.
+```{r}
+loadData <- function(url){
+  library(jsonlite)  
+  chancesToWin <- fromJSON(txt=url)
+  data <- chancesToWin[2]$data
+  cleanData <- data.frame(lapply(data['label'], as.factor), t(as.data.frame(data$data)))
+  return(cleanData)
+}
+
+```
+
+Here we use `jsonlite` to download the file containing all the data and to parse its content. We also keep only the data we're actually interested in (`chancesToWin[2]$data`) and we convert the team names (`label`) to a factor.
+We also need to convert the json array that contains the actual values to columns to use in a dataframe. `t(as.data.frame(data$data))` will do it.
+
+Now that we have all the data, we can start visualising it. The following code takes te data we downloaded and creates an heatmap. Each team will have it's own row indicating their chances of winning the league across the season. The darker, the better.
+
+```{r}
+heatmap <- function(cleanData){
+  library(ggplot2)
+  melted = melt(cleanData, id.vars="label")
+  heatmap <- ggplot(melted, aes(variable, label)) +
+    geom_tile(aes(fill=value), show.legend = FALSE) + theme_minimal() +
+    scale_x_discrete(NULL, labels=NULL) +
+    ylab(NULL) +
+    ylim(rev(levels(melted$label))) +
+    scale_fill_gradient(low = "white", high = "black")
+  return(heatmap)
+}
+```
+We use `ggplot2`
+
+To conclude, here are a couple of example showing what happened (so far) in the Italian Serie A and in the English Premier League.
+```{r}
+serieAData <- loadData('http://www.sportsclubstats.com/d/Italy/SerieA_ChanceWillWinChampionship_Small_A.json')
+heatmap(serieAData)
+premierLeagueData <- loadData('http://www.sportsclubstats.com/d/England/Premier_ChanceWillWinChampionship_Small_A.json')
+heatmap(premierLeagueData)
+```
+
